@@ -80,9 +80,10 @@ if _any_api_pydantic_adapter.is_v1:
         return field.extra
 
 else:
+    from functools import lru_cache
     from typing import Any, Dict, List, Sequence, Tuple, Union
 
-    from pydantic import BaseModel, TypeAdapter, ValidationError
+    from pydantic import BaseModel, ValidationError, TypeAdapter as PyTypeAdapter
     from pydantic.fields import FieldInfo, PydanticUndefined
     from typing_extensions import Annotated
 
@@ -112,6 +113,10 @@ else:
 
         return updated_loc_errors
 
+    @lru_cache
+    def TypeAdapter(annotation: T, info: FieldInfo) -> PyTypeAdapter:
+        return pydantic.TypeAdapter(Annotated[annotation, FieldInfo])
+
     class PaitModelField(object):  # type: ignore[no-redef]
         def __init__(
             self,
@@ -126,7 +131,7 @@ else:
             self.field_info = field_info
             self.request_param = request_param
             self.base_model = base_model
-            self._type_adapter: TypeAdapter[Any] = TypeAdapter(Annotated[annotation, field_info])
+            self._type_adapter: PyTypeAdapter[Any] = TypeAdapter(annotation, field_info)
 
         def validate(self, value: _T) -> _T:
             try:
